@@ -1,29 +1,68 @@
 <!DOCTYPE html>
 <html lang="en">
-    <!-- Don't Click Me-->
     <head>
         <title>Can't Click Me!</title>
-        <meta charset="UTF-8"> <!-- UTF-8 encoding-->
+        <meta charset="UTF-8">
         <link rel="icon" href="images/favicon.ico" type="image/x-icon">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0"> <!-- Mobile-Friendly Responsive Tag-->
-        <link href="https://fonts.googleapis.com/css2?family=Anta&display=swap" rel="stylesheet"> <!-- Link to the Anta font-->
-        <link rel="stylesheet" href="style.css"> <!-- Link to main CSS -->
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        
+        <!-- Preload critical fonts -->
+        <link rel="preload" href="https://fonts.googleapis.com/css2?family=Anta&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'">
+        <noscript>
+            <link href="https://fonts.googleapis.com/css2?family=Anta&display=swap" rel="stylesheet">
+        </noscript>
+        
+        <!-- Inline critical CSS -->
+        <style>
+            body {
+                background-color: black;
+                color: white;
+                margin: 0;
+                padding: 0;
+            }
+            .main-content {
+                max-width: 600px;
+                margin: 0 auto;
+                padding: 1rem;
+                text-align: center;
+            }
+            #header {
+                font-family: "Consolas", monospace;
+            }
+        </style>
+        
+        <!-- Defer non-critical CSS -->
+        <link rel="stylesheet" href="style.css" media="print" onload="this.media='all'">
+        
+        <!-- Preconnect to Supabase -->
+        <link rel="preconnect" href="https://gkfrlvfaersfknteuqwf.supabase.co">
     </head>
     <body>
-        <p id="header">Betcha can't click the button!</p>
-        <p id="teleportation"></p>
-        <p id="timer"><br></p>
-
-        <div id="dark-mode-box"> <!-- The div for the dark mode checkbox and ask-new-timeout button-->
-            <button id="ask-new-timeout" onclick="ask_timeout()">Set New Timeout</button>
-            <label for="dark-mode">Dark Mode</label>
-            <input id="dark-mode" type="checkbox" checked onchange="dark_mode()">
+        <!-- Move account div to bottom since it's not critical -->
+        <div class="main-content">
+            <p id="header">Betcha can't click the button!</p>
+            <p id="teleportation"></p>
+            <p id="timer"><br></p>
+            <hr>
+            <button class="round-btn">Try Click Me</button>
         </div>
 
-        <hr>
-        <!-- the Don't Click Me button -->
-        <button class="round-btn" onmouseenter="block()" onmouseleave="clearTimerOnMouseLeave()" onclick="after_click()">Try Click Me</button>
+        <div id="account-div">
+            <div id="avatar-container"></div>
+            <p id="highScore"></p>
+            <p id="userEmail"></p>
+            <p id="userName"></p>
+            <button id="login-google">Login with Google <img src="images/ico-google.png" id="google-ico" loading="lazy" width="16" height="16" alt="Google Icon"></button>
+            <button id="leaderboard">Show leaderboard</button>
+        </div>
 
-        <script src="script.js"></script> <!-- Link to JS -->
+        <div id="utility">
+            <button id="ask-new-timeout">Set New Timeout</button>
+            <label for="dark-mode">Dark Mode</label>
+            <input id="dark-mode" type="checkbox" checked>
+        </div>
+
+        <!-- Defer JavaScript -->
+        <script src="script.js" type="module" defer></script>
     </body>
 </html>
