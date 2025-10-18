@@ -2,12 +2,18 @@ import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js
 
 // === CONSTANTS & CONFIGURATIONS ===
 const SUPABASE_URL = 'https://gkfrlvfaersfknteuqwf.supabase.co';
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdrZnJsdmZhZXJzZmtudGV1cXdmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc4ODE5ODIsImV4cCI6MjA3MzQ1Nzk4Mn0.qnqj1sIT2hAcH2MOQawcbmKxq1iY_kaRZrSM_mLpgKc';
-const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdrZnJsdmZhZXJzZmtudGV1cXdmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc4ODE5ODIsImV4cCI6MjA3MzQ1Nzk4Mn0.qnqj1sIT2hAcH2MOQawcbmKxq1iY_kaRZrSM_mLpgKc';
+const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 const COOKIE_EXPIRY = 30; // days
 const HISTORY_KEY = 'clickHistory';
 const MAX_HISTORY = 50; // maximum number of history entries to store
+const LEADERBOARD_SIZE = 10; // Number of top scores to display
+const COOKIE_OPTIONS = {
+    expires: COOKIE_EXPIRY,
+    path: '/',
+    sameSite: 'strict'
+};
 
 // === STATE VARIABLES ===
 const body = document.querySelector('body');
@@ -28,6 +34,7 @@ const onHoverList = [
     "You'll surely regret what's <i>coming...</i>",
     "You're making a <b>MISTAKE!!!</b>"
 ];
+
 const onClickList = [
     "<b>NO!!!!!!! 😭</b>",
     "<i>Shoot...</i>",
@@ -93,13 +100,6 @@ const alertMsgs = [
     "You clicked... and nothing happened. Just like your dreams."
 ];
 
-const LEADERBOARD_SIZE = 10; // Number of top scores to display
-const COOKIE_OPTIONS = {
-    expires: COOKIE_EXPIRY,
-    path: '/',
-    sameSite: 'strict'
-};
-
 // === AUTH FUNCTIONS ===
 async function post_login(loginSession) {
     const user = loginSession.user;
@@ -147,8 +147,10 @@ async function post_login(loginSession) {
     
     userEmail_p.innerHTML = `<strong>Email:</strong><br>${data.email || 'None'}`;
     userEmail_p.title = data.email || 'None'; // Add title for tooltip
-    
-    highscore_p.innerHTML = `<strong>Best Score:</strong><br>${data.high_score || 'None'}`;
+
+    window.userHistory = data.history;
+    const bestScore = getBestScoreForTimeout(window.userHistory, timeout);
+    highscore_p.innerHTML = `<strong>Best Score:</strong><br>${bestScore}`;
 
     // Create high score container div
     const highScoreContainer = document.createElement('div');
@@ -197,8 +199,6 @@ async function post_login(loginSession) {
         }
     });
 
-    // supabase db info filling
-
     // signout logic
     login_google.innerHTML = "Sign Out ᳄";
     login_google.addEventListener("click", signout)
@@ -226,10 +226,12 @@ function signout() {
             const element = document.querySelector(selector);
             if (element) {
                 element.textContent = "";
-                element.style.display = "none";
+                //element.style.display = "none";
             }
         });
         
+        // hide clear highscore button
+        document.getElementById('clear-highscore').style.display = 'none';
         // Restore login functionality
         login_google.addEventListener('click', () => {
             const loginUrl = `https://gkfrlvfaersfknteuqwf.supabase.co/auth/v1/authorize?provider=google`;
@@ -298,12 +300,6 @@ async function after_click() {
     just_clicked = true;
     stopTimer();
 
-    // 🧪 Safety check
-    if (!timeout || lastElapsed === null) {
-        console.warn("Missing timeout or elapsed time.");
-        return;
-    }
-
     // 🧱 Get main content container
     const mainContent = document.querySelector('.main-content');
     if (!mainContent) {
@@ -316,7 +312,29 @@ async function after_click() {
         const msg = document.createElement('p');
         msg.className = "dynamic-msg";
         const dramaticMsg = dramaticMsgs[Math.floor(Math.random() * dramaticMsgs.length)];
-        msg.innerHTML = `<b><i>WHAT????????? YOU ACTUALLY CLICKED ON THAT BUTTON?</i></b><br><i>${dramaticMsg}</i>`;
+        const { data: { session }, error } = await supabase.auth.getSession();
+        msg.innerHTML = `<b><i>WHAT????????? YOU ACTUALLY CLICKED ON THAT BUTTON?</i></b><br>`;
+
+        if (error || !session) {
+            msg.innerHTML += dramaticMsg;
+        } else {
+            const username = session?.user?.user_metadata?.name;
+            if (!username) console.error('AFTER_CLICK() USERNAME ERROR: SESSION?.USER?.USER_METADATA?.NAME');
+
+            let ranchoice = Math.random();
+            if (ranchoice < 0.5) {
+                msg.innerHTML += dramaticMsg.replace(
+                    /<b><i>(.*?)<\/i><\/b>/,
+                    `<b><i>${username.toUpperCase()}, $1</i></b>`
+                );
+            } else {
+                msg.innerHTML += dramaticMsg.replace(
+                    /([.!])<\/i><\/b>$/,
+                    `, ${username.toUpperCase()}!</i></b>`
+                );
+            }
+        }
+
         mainContent.appendChild(msg);
     }
 
@@ -338,10 +356,9 @@ async function after_click() {
     saveScore(lastElapsed, timeout);
     console.log(`📝 Saved score to history: ${scoreStr}`);
 
-    // 🔐 Record score to leaderboard if logged in
+    // 🔐 Record score as relic if logged in
     if (logined) {
         try {
-            console.log("🔄 Checking session...");
             const { data: { session }, error: sessionError } = await supabase.auth.getSession();
             if (sessionError || !session) {
                 console.error("❌ Session error or no active session:", sessionError);
@@ -349,107 +366,42 @@ async function after_click() {
             }
 
             const user = session.user;
-            const avatar = user?.user_metadata?.picture || null;
-            const username = user?.user_metadata?.username || "Anonymous";
             const userId = user?.id;
+            const username = user?.user_metadata?.name || "Anonymous";
+            const avatar = user?.user_metadata?.picture || null;
 
-            console.log("📊 Updating leaderboard...");
+            const currentRatio = lastElapsed / timeout;
+            const rank = getRank(currentRatio); //! GETRANK() DOESN'T EXIST!!!!!
+            const relic = `${Date.now()}|${scoreStr}|${rank}|${currentRatio.toFixed(4)}`;
 
-            // 🧾 Insert leaderboard entry
-            const { error: leaderboardError } = await supabase
-                .from('leaderboard')
-                .insert({
-                    click_time: new Date().toISOString(),
-                    score: scoreStr,
-                    timeout,
-                    avatar_url: avatar,
-                    username,
-                    user_id: userId,
-                    rank: null
-                });
-
-            if (leaderboardError) {
-                console.error("❌ Leaderboard insert error:", leaderboardError);
-            } else {
-                console.log("✅ Score recorded to leaderboard");
-            }
-
-            const { data: scores, error: fetchError } = await supabase
-            .from('leaderboard')
-            .select('score, user_id');
-
-            if (!fetchError && scores?.length) {
-                const currentRatio = lastElapsed / timeout;
-
-                const ranked = scores
-                    .map(entry => {
-                    const [s, t] = entry.score.split('/').map(Number);
-                    return { ...entry, ratio: s / t };
-                    })
-                    .sort((a, b) => a.ratio - b.ratio);
-
-                const rank = ranked.findIndex(entry => entry.user_id === session.user.id) + 1;
-
-                await supabase
-                    .from('leaderboard')
-                    .update({ rank })
-                    .eq('user_id', session.user.id)
-                    .eq('score', scoreStr);
-                }
-
-            // 🧠 Fetch user data for high score comparison
             const { data: userData, error: userError } = await supabase
-                .from('clickers')
-                .select('*')
+                .from('leaderboard')
+                .select('scores')
                 .eq('id', userId)
                 .single();
 
             if (userError || !userData) {
-                console.warn("⚠️ Could not fetch user data for high score comparison.");
+                console.warn("⚠️ Could not fetch user data for score logging.");
                 return;
             }
 
-            const currentRatio = lastElapsed / timeout;
-            const highScore = userData.high_score;
+            const scores = Array.isArray(userData.scores) ? userData.scores : [];
+            const updatedScores = [...scores, relic];
 
-            if (highScore) {
-                const [existingScore, existingTimeout] = highScore.split('/').map(Number);
-                const existingRatio = existingScore / existingTimeout;
+            const { error: updateError } = await supabase
+                .from('leaderboard')
+                .update({ scores: updatedScores })
+                .eq('id', userId);
 
-                if (currentRatio < existingRatio) {
-                    console.log("🏆 New personal best!");
-                    const { error: updateError } = await supabase
-                        .from('clickers')
-                        .update({ high_score: scoreStr })
-                        .eq('id', userId);
-
-                    if (updateError) {
-                        console.error("❌ High score update error:", updateError);
-                    } else {
-                        const highScoreElement = document.querySelector("#highScore");
-                        if (highScoreElement) {
-                            highScoreElement.innerHTML = `<strong>Best Score:</strong><br>${scoreStr}`;
-                        }
-                    }
-                }
+            if (updateError) {
+                console.error("❌ Score update error:", updateError);
             } else {
-                const { error: updateError } = await supabase
-                    .from('clickers')
-                    .update({ high_score: scoreStr })
-                    .eq('id', userId);
-
-                if (updateError) {
-                    console.error("❌ First high score update error:", updateError);
-                } else {
-                    const highScoreElement = document.querySelector("#highScore");
-                    if (highScoreElement) {
-                        highScoreElement.innerHTML = `<strong>Best Score:</strong><br>${scoreStr}`;
-                    }
-                }
+                window.userScores = updatedScores;
+                console.log("📜 Relic score logged:", relic);
             }
 
         } catch (error) {
-            console.error("❌ Error recording score:", error);
+            console.error("❌ Error recording relic score:", error);
         }
     }
 
@@ -503,7 +455,8 @@ function dark_mode() {
 
 function ask_timeout() {
     while (true) {
-        let temp_timeout = prompt("Enter delay in milliseconds before the alert fires: (100 🏃 to 1000 🐢)\nOr press Cancel to close the window.");
+        let temp_timeout = prompt(`Enter delay in milliseconds before the alert fires: (100 🏃 to 1000 🐢)
+Or press Cancel to close the window.`);
         if (temp_timeout === null) {
             let close_decision = confirm('You clicked Cancel. Close the window?');
             if (close_decision) {
@@ -525,6 +478,11 @@ function ask_timeout() {
         }
     }
     document.getElementById('teleportation').innerHTML = `P.S. You have <strong>${timeout}ms</strong> before the alert fires.`
+
+    const highscore_p = document.querySelector("#highScore");
+    const bestScore = getBestScoreForTimeout(window.userHistory, timeout);
+    highscore_p.innerHTML = `<strong>Best Score:</strong><br>${bestScore}`;
+
 }
 
 function reset() {
@@ -540,9 +498,6 @@ function reset() {
     // Re-add event listeners if needed
     const leaderboardButton = document.getElementById('leaderboard');
     const historyButton = document.getElementById('history-button');
-    
-    startBtn?.removeEventListener("click", startGame);
-    startBtn?.addEventListener("click", startGame);
     
     if (leaderboardButton) {
         leaderboardButton.addEventListener('click', showLeaderboard);
@@ -593,20 +548,52 @@ function saveScore(score, timeout) {
     setCookie('lastScore', `${score}/${timeout}`);
 }
 
+function getBestScoreForTimeout(historyArray, currentTimeout) {
+    if (!Array.isArray(historyArray)) return 'None';
+    const filtered = historyArray
+        .map(entry => {
+            const [score, timeout] = entry.split('/').map(Number);
+            return { score, timeout, ratio: score / timeout };
+        })
+        .filter(entry => entry.timeout === currentTimeout);
+
+    if (filtered.length === 0) return 'None';
+
+    const best = filtered.reduce((a, b) => (a.ratio < b.ratio ? a : b));
+    return `${best.score}/${best.timeout}`;
+}
+
 async function showHistory() {
-    const history = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
-    
-    // Remove existing history view
+    const rawScores = window.userScores || JSON.parse(localStorage.getItem('score_log') || '[]');
+
+    const parsed = rawScores.map(entry => {
+        const [ts, scoreStr, rank, ratio] = entry.split('|');
+        const [score, timeout] = scoreStr.split('/').map(Number);
+        return {
+            timestamp: Number(ts),
+            score,
+            timeout,
+            ratio: parseFloat(ratio),
+            rank
+        };
+    });
+
+    const uniqueTimeouts = [...new Set(parsed.map(entry => entry.timeout))].sort((a, b) => a - b);
+
     const existingHistory = document.getElementById('history-container');
-    if (existingHistory) {
-        existingHistory.remove();
-    }
+    if (existingHistory) existingHistory.remove();
 
     const historyContainer = document.createElement('div');
     historyContainer.id = 'history-container';
     historyContainer.innerHTML = `
         <div class="history-modal">
             <h2>📜 Your History 📜</h2>
+            <div class="timeout-filter" id="topbar">
+                <button class="timeout-btn active" data-timeout="all">All</button>
+                ${uniqueTimeouts.map(t =>
+                    `<button class="timeout-btn" data-timeout="${t}">${t}ms</button>`
+                ).join('')}
+            </div>
             <div class="history-content">
                 <table>
                     <thead>
@@ -615,45 +602,73 @@ async function showHistory() {
                             <th>Score</th>
                             <th>Timeout</th>
                             <th>Ratio</th>
+                            <th>Rank</th>
                         </tr>
                     </thead>
                     <tbody id="history-body">
-                        ${history.length === 0 ? 
-                            '<tr><td colspan="4">No history available</td></tr>' : 
-                            history
-                                .sort((a, b) => a.timeout - b.timeout || a.ratio - b.ratio)
-                                .map(entry => `
-                                    <tr>
-                                        <td>${new Date(entry.timestamp).toLocaleString()}</td>
-                                        <td>${entry.score}ms</td>
-                                        <td>${entry.timeout}ms</td>
-                                        <td>${entry.ratio}</td>
-                                    </tr>
-                                `).join('')
-                        }
+                        ${generateHistoryRows(parsed)}
                     </tbody>
                 </table>
             </div>
-            <button id="close-history">Close</button>
-            <button id="clear-history">Clear History</button>
+            <div class="history-actions">
+                <button id="close-history">Close</button>
+                <button id="clear-history">Clear History</button>
+            </div>
         </div>
     `;
 
     document.body.appendChild(historyContainer);
+    const topbar = document.getElementById('topbar');
+    topbar.style.display = parsed.length === 0 ? "none" : "block";
 
-    // Add event listeners
+    const filterButtons = document.querySelectorAll('.timeout-btn');
+    filterButtons.forEach(btn => {
+        btn.addEventListener('click', () => {
+            filterButtons.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+
+            const timeout = btn.dataset.timeout;
+            const filtered = timeout === 'all'
+                ? parsed
+                : parsed.filter(entry => entry.timeout === parseInt(timeout));
+
+            const tbody = document.getElementById('history-body');
+            tbody.innerHTML = generateHistoryRows(filtered);
+        });
+    });
+
     document.getElementById('close-history').addEventListener('click', () => {
         historyContainer.remove();
     });
 
     document.getElementById('clear-history').addEventListener('click', () => {
         if (confirm('Are you sure you want to clear your history?')) {
-            localStorage.removeItem(HISTORY_KEY);
+            localStorage.removeItem('score_log');
+            window.userScores = [];
             historyContainer.remove();
-            showHistory(); // Reopen with empty state
+            showHistory();
         }
     });
 }
+
+function generateHistoryRows(history) {
+    if (history.length === 0) {
+        return '<tr><td colspan="5">No history available</td></tr>';
+    }
+
+    return history
+        .sort((a, b) => a.timeout - b.timeout || a.ratio - b.ratio)
+        .map(entry => `
+            <tr>
+                <td>${new Date(entry.timestamp).toLocaleString()}</td>
+                <td>${entry.score}ms</td>
+                <td>${entry.timeout}ms</td>
+                <td>${entry.ratio}</td>
+                <td>${entry.rank}</td>
+            </tr>
+        `).join('');
+}
+
 
 // === LEADERBOARD FUNCTIONS ===
 async function showLeaderboard() {
@@ -674,48 +689,27 @@ async function showLeaderboard() {
     leaderboardContainer.innerHTML = `
         <div class="leaderboard-modal">
             <h2>🏆 Top Players 🏆</h2>
-            <div class="leaderboard-content">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Rank</th>
-                            <th>Player</th>
-                            <th>Score</th>
-                            <th>Date</th>
-                        </tr>
-                    </thead>
-                    <tbody id="leaderboard-body">
-                        <tr><td colspan="4">Loading...</td></tr>
-                    </tbody>
-                </table>
-            </div>
-            <button id="close-leaderboard" type="button">Close</button>
+            <div id="leaderboardTopbar" class="leaderboard-topbar"></div>
+            <div id="leaderboardContent" class="leaderboard-content"></div>
+            <button id="close-leaderboard" class="close-btn">✖</button>
         </div>
     `;
 
     document.body.appendChild(leaderboardContainer);
 
-    // Add both click and keyboard events for closing
+    document.getElementById('close-leaderboard').onclick = () => {
+        leaderboardContainer.remove();
+    };
+
+    // Add click events for closing
     const closeButton = document.getElementById('close-leaderboard');
     closeButton.onclick = closeLeaderboard;
-    
-    // Add escape key support
-    document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape') closeLeaderboard();
-    });
 
     try {
         console.log("📊 Fetching leaderboard data...");
         const { data, error } = await supabase
             .from('leaderboard')
-            .select(`
-                id,
-                click_time,
-                score,
-                rank,
-                avatar_url,
-                username
-            `)
+            .select(`*`)
             .order('rank', { ascending: true })
             .limit(LEADERBOARD_SIZE);
 
@@ -729,32 +723,17 @@ async function showLeaderboard() {
         }
 
         console.log(`✅ Fetched leaderboard data:`, data);
-        const tbody = document.getElementById('leaderboard-body');
-        
-        if (!tbody) {
-            console.error("❌ Leaderboard tbody not found");
-            return;
-        }
-        
+
+        const topbar = document.getElementById('leaderboardTopbar');
+        const content = document.getElementById('leaderboardContent');
+        if (!topbar || !content) return;
+
         if (!data || data.length === 0) {
-            console.log("ℹ️ No leaderboard data available");
-            tbody.innerHTML = '<tr><td colspan="4">No Data Available</td></tr>';
+            content.innerHTML = '<p>No leaderboard data available.</p>';
             return;
         }
 
-        // Update the table with correct data mapping
-        tbody.innerHTML = data.map((entry) => `
-            <tr>
-                <td>${entry.rank || 'N/A'}</td>
-                <td class="player-cell">
-                    <img src="${entry.avatar_url}" alt="Avatar" class="leaderboard-avatar" 
-                        onerror="this.src='images/default-avatar.png';">
-                    ${entry.username || 'Anonymous'}
-                </td>
-                <td>${entry.score || 'N/A'}</td>
-                <td>${new Date(entry.click_time).toLocaleDateString()}</td>
-            </tr>
-        `).join('');
+        renderLeaderboardParagraph(data, topbar, content);
 
     } catch (error) {
         console.error("❌ Leaderboard error:", error);
@@ -765,7 +744,6 @@ async function showLeaderboard() {
     }
 
     // Change the close button event handler
-    //const closeButton = document.getElementById('close-leaderboard');
     if (closeButton) {
         closeButton.addEventListener('click', () => {
             const container = document.getElementById('leaderboard-container');
@@ -774,6 +752,95 @@ async function showLeaderboard() {
             }
         });
     }
+}
+
+function getTimeoutBand(timeout) {
+    const bandStart = Math.floor(timeout / 100) * 100;
+    const bandEnd = bandStart + 100;
+    return `${bandStart}~${bandEnd}`;
+}
+
+function groupScoresByBand(entries) {
+    const bands = {};
+    entries.forEach(entry => {
+        const [score, timeout] = entry.score.split('/').map(Number);
+        const band = getTimeoutBand(timeout);
+        if (!bands[band]) bands[band] = [];
+        bands[band].push({ ...entry, scoreNum: score, timeoutNum: timeout, ratio: score / timeout });
+    });
+    return bands;
+}
+
+function sortAndBadgeBand(entries) {
+    const sorted = entries.sort((a, b) => a.ratio - b.ratio);
+    return sorted.map((entry, index) => ({
+        ...entry,
+        badge: index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : null
+    }));
+}
+
+function scrollToBand(band) {
+    const el = document.getElementById(`band-${band}`);
+    if (el) el.scrollIntoView({ behavior: 'smooth' });
+}
+
+function renderLeaderboardParagraph(entries, topbar, content, page = 0) {
+    const bands = groupScoresByBand(entries);
+    const bandKeys = Object.keys(bands).sort((a, b) => Number(b.split('~')[0]) - Number(a.split('~')[0]));
+    const bandsPerPage = 5;
+    const start = page * bandsPerPage;
+    const slice = bandKeys.slice(start, start + bandsPerPage);
+
+    topbar.innerHTML = '';
+    content.innerHTML = '';
+
+    if (start > 0) {
+        const prevBtn = document.createElement('button');
+        prevBtn.textContent = '[<]';
+        prevBtn.onclick = () => renderLeaderboardParagraph(entries, page - 1);
+        topbar.appendChild(prevBtn);
+    }
+
+    slice.forEach(band => {
+        const btn = document.createElement('button');
+        btn.textContent = `[${band}ms]`;
+        btn.onclick = () => scrollToBand(band);
+        topbar.appendChild(btn);
+    });
+
+    if (start + bandsPerPage < bandKeys.length) {
+        const nextBtn = document.createElement('button');
+        nextBtn.textContent = '[>]';
+        nextBtn.onclick = () => renderLeaderboardParagraph(entries, page + 1);
+        topbar.appendChild(nextBtn);
+    }
+
+    slice.forEach(band => {
+        const bandHeader = document.createElement('h3');
+        bandHeader.id = `band-${band}`;
+        bandHeader.textContent = `[${band}ms]`;
+        content.appendChild(bandHeader);
+
+        const sortedEntries = sortAndBadgeBand(bands[band]);
+        sortedEntries.forEach((entry, index) => {
+            const line = document.createElement('p');
+            line.className = 'leaderboard-entry';
+
+            const avatar = document.createElement('img');
+            avatar.src = entry.avatar_url || 'images/default-avatar.png';
+            avatar.className = 'leaderboard-avatar';
+            avatar.onerror = () => { avatar.src = 'images/default-avatar.png'; };
+
+            line.appendChild(document.createTextNode(`${entry.badge || index + 1}. `));
+            line.appendChild(avatar);
+            line.appendChild(document.createTextNode(` ${entry.username} — ${entry.score}`));
+
+            content.appendChild(line);
+        });
+
+        const divider = document.createElement('hr');
+        content.appendChild(divider);
+    });
 }
 
 // === INITIALIZATION ===
@@ -850,12 +917,3 @@ async function init() {
 document.addEventListener('DOMContentLoaded', () => {
     init();
 });
-
-// === EXPORTS (if needed) ===
-export {
-    dark_mode,
-    ask_timeout,
-    block,
-    clearTimerOnMouseLeave,
-    after_click
-};

@@ -1,5 +1,3 @@
-/* Hello */
-
 /* Base styles */
 body {
   background-color: black;
@@ -288,6 +286,11 @@ hr {
     z-index: 1000;
 }
 
+#leaderboard-container hr {
+  width: 100%;
+  max-width: 800px;
+  margin: 12px auto;
+}
 .leaderboard-modal {
     background: #222;
     border: 1px solid #888;
@@ -356,6 +359,20 @@ hr {
     background: #2e5;
 }
 
+.leaderboard-topbar button {
+  margin: 2px;
+  padding: 4px 8px;
+  font-weight: bold;
+}
+
+.leaderboard-content h3 {
+  margin-top: 20px;
+  color: gold;
+}
+
+.leaderboard-content p {
+  margin: 4px 0;
+}
 /* History button and modal styles */
 #history-button {
     background: #444;
@@ -466,4 +483,52 @@ hr {
 #clear-highscore:hover {
     background: #933;
     transform: scale(1.1);
+}
+
+/* Timeout filter styling */
+.timeout-filter {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+    padding: 8px;
+    overflow-x: auto;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+}
+
+.timeout-btn {
+    background: #444;
+    color: white;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+}
+
+.timeout-btn:hover {
+    background: #555;
+    transform: scale(1.05);
+}
+
+.timeout-btn.active {
+    background: #3a6;
+}
+
+.history-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    margin-top: 20px;
+}
+
+/* reset button styling */
+.reset-btn {
+  transform: scale(1.2);
+  background-color: #ddd;
+}
+.reset-btn:hover {
+  transform: scale(1.3);
+  transition: transform 0.2s ease-in-out, background-color 0.2s ease-in-out;
 }
