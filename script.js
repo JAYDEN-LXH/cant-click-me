@@ -104,8 +104,6 @@ const alertMsgs = [
 async function post_login(loginSession) {
     const user = loginSession.user;
     const login_google = document.querySelector("#login-google");
-    const username_p = document.querySelector("#userName");
-    const userEmail_p = document.querySelector("#userEmail");
     const highscore_p = document.querySelector("#highScore");
     const avatarDiv = document.querySelector("#avatar-container");
 
@@ -141,13 +139,7 @@ async function post_login(loginSession) {
 
     avatarDiv.appendChild(avatarNode);
 
-    // username & highscore setup with labels and titles
-    username_p.innerHTML = `<strong>Username:</strong><br>${data.username || 'None'}`;
-    username_p.title = data.username || 'None'; // Add title for tooltip
-    
-    userEmail_p.innerHTML = `<strong>Email:</strong><br>${data.email || 'None'}`;
-    userEmail_p.title = data.email || 'None'; // Add title for tooltip
-
+    // Setup highscore
     window.userHistory = data.history;
     const bestScore = getBestScoreForTimeout(window.userHistory, timeout);
     highscore_p.innerHTML = `<strong>Best Score:</strong><br>${bestScore}`;
@@ -157,8 +149,9 @@ async function post_login(loginSession) {
     highScoreContainer.style.display = 'flex';
     highScoreContainer.style.alignItems = 'center';
     highScoreContainer.style.gap = '8px';
-    
-    // Move high score paragraph into container
+    highScoreContainer.style.margin = '30px';
+    highScoreContainer.style.height = '30px';
+
     highScoreContainer.appendChild(highscore_p);
     
     // Create clear button
@@ -188,16 +181,13 @@ async function post_login(loginSession) {
     highScoreContainer.appendChild(clearHighScoreBtn);
     
     // Add container to account div
-    document.querySelector("#account-div").appendChild(highScoreContainer);
+    document.querySelector(".bottom-zone").appendChild(highScoreContainer);
 
-    // Show avatar container and user info elements
+    // Show avatar container and highscore
     avatarDiv.style.display = "block";
-    const userInfoElements = [username_p, userEmail_p, highscore_p];
-    userInfoElements.forEach(element => {
-        if (element) {
-            element.style.display = "block";
-        }
-    });
+    if (highscore_p) {
+        highscore_p.style.display = "block";
+    }
 
     // signout logic
     login_google.innerHTML = "Sign Out ᳄";
@@ -220,15 +210,11 @@ function signout() {
         }
         avatarContainer.style.display = "none";
         
-        // Clear and hide user info
-        const userInfoElements = ["#userName", "#userEmail", "#highScore"];
-        userInfoElements.forEach(selector => {
-            const element = document.querySelector(selector);
-            if (element) {
-                element.textContent = "";
-                //element.style.display = "none";
-            }
-        });
+        // Clear and hide highscore
+        const highscore = document.querySelector("#highScore");
+        if (highscore) {
+            highscore.textContent = "";
+        }
         
         // hide clear highscore button
         document.getElementById('clear-highscore').style.display = 'none';
@@ -367,11 +353,14 @@ async function after_click() {
 
             const user = session.user;
             const userId = user?.id;
-            const username = user?.user_metadata?.name || "Anonymous";
+            const username = user?.user_metadata?.name;
+            if (!username) {
+                username = await generateUniqueAnonymousName();
+            }
             const avatar = user?.user_metadata?.picture || null;
 
             const currentRatio = lastElapsed / timeout;
-            const rank = getRank(currentRatio); //! GETRANK() DOESN'T EXIST!!!!!
+            const rank = getRank(currentRatio);
             const relic = `${Date.now()}|${scoreStr}|${rank}|${currentRatio.toFixed(4)}`;
 
             const { data: userData, error: userError } = await supabase
@@ -412,77 +401,153 @@ async function after_click() {
 }
 
 // === UTILITY FUNCTIONS ===
-function dark_mode() {
-    const utilityDiv = document.getElementById('utility');
-    const accountDiv = document.getElementById('account-div');
-    const label = document.querySelector('#utility label');
+async function generateUniqueAnonymousName() {
+  let name;
+  let attempts = 0;
 
-    // Get computed style instead of direct style
-    const isLight = window.getComputedStyle(body).backgroundColor === "rgb(255, 255, 255)";
+  while (attempts < 10) {
+    const suffix = Math.floor(Math.random() * 1000000).toString().padStart(6, '0');
+    name = `Anonymous${suffix}`;
 
-    // Background and text
-    body.style.backgroundColor = isLight ? "black" : "white";
-    body.style.color = isLight ? "white" : "black";
+    const { data, error } = await supabase
+      .from('clickers')
+      .select('username')
+      .eq('username', name)
+      .single();
 
-    // Utility div
-    if (utilityDiv) {
-        utilityDiv.style.backgroundColor = isLight ? "#222" : "#eee";
-        utilityDiv.style.borderColor = isLight ? "#888" : "#aaa";
+    if (error || !data) {
+      return name; // name is unique
     }
 
-    // Account div
-    if (accountDiv) {
-        accountDiv.style.backgroundColor = isLight ? "#222" : "#eee";
-        accountDiv.style.borderColor = isLight ? "#888" : "#aaa";
-    }
+    attempts++;
+  }
 
-    // Label
-    if (label) {
-        label.style.color = isLight ? "white" : "black";
-    }
-
-    // Score text if it exists
-    const scoreText = document.querySelector('.dynamic-msg span');
-    if (scoreText) {
-        scoreText.style.color = isLight ? "yellow" : "#003366";
-    }
-
-    // HR elements
-    document.querySelectorAll('hr').forEach(hr => {
-        hr.style.borderTopColor = isLight ? "white" : "black";
-    });
+  console.warn("⚠️ Could not find unique anonymous name after 10 tries.");
+  return `Anonymous${Date.now()}`; // fallback
 }
 
-function ask_timeout() {
-    while (true) {
-        let temp_timeout = prompt(`Enter delay in milliseconds before the alert fires: (100 🏃 to 1000 🐢)
-Or press Cancel to close the window.`);
-        if (temp_timeout === null) {
-            let close_decision = confirm('You clicked Cancel. Close the window?');
-            if (close_decision) {
-                window.close();
-                return;
-            } else {
-                continue;
-            }
-        }
-        let input_int = parseInt(temp_timeout);
+function dark_mode() {
+  const darkModeCheckbox = document.getElementById('dark-mode');
+  const isDark = darkModeCheckbox?.checked;
 
-        if (!isNaN(input_int) && input_int >= 100 && input_int <= 1000) {
-            timeout = input_int;
-            break;
-        } else if (!isNaN(input_int)) {
-            alert("Hey! Your number isn't from 100ms to 1000ms!");
-        } else {
-            alert("Hey! That's not even a number!");
-        }
+  body.style.backgroundColor = isDark ? "#222" : "#ddd";
+  body.style.color = isDark ? "#f5f5f5" : "#222";
+
+  const accountDiv = document.getElementById('main-div');
+  const label = document.querySelector('#utility label');
+  const scoreText = document.querySelector('.dynamic-msg span');
+
+  if (accountDiv) {
+    accountDiv.style.backgroundColor = isDark ? "#222" : "#eee";
+    accountDiv.style.borderColor = isDark ? "#888" : "#aaa";
+  }
+
+  if (label) {
+    label.style.color = isDark ? "#f5f5f5" : "#222";
+  }
+
+  if (scoreText) {
+    scoreText.style.color = isDark ? "yellow" : "#003366";
+  }
+
+  document.querySelectorAll("hr").forEach(hr => {
+    hr.style.borderTopColor = isDark ? "#f5f5f5" : "#222";
+  });
+
+  const modeToggle = document.querySelector('.mode-toggle');
+    if (modeToggle) {
+        modeToggle.style.color = isDark ? "#f5f5f5" : "#222";
+        modeToggle.style.backgroundColor = isDark ? "#222" : "#fff";
+        modeToggle.style.border = isDark ? "1px solid white" : "1px solid black";
+        modeToggle.style.borderRadius = "6px";
+        modeToggle.style.padding = "6px";
     }
+
+    if (darkModeCheckbox) {
+        darkModeCheckbox.style.accentColor = isDark ? "#f5f5f5" : "#222";
+    }
+}
+
+function ask_timeout(firstCall=false) {
+    const timeoutDiv = document.getElementById('timeout');
+    const submitTimeout = document.getElementById('submitTimeout');
+    const inputTimeout = document.getElementById('timeoutChoice');
+    const invalidTimeout = document.getElementById('invalidTimeout');
+    timeoutDiv.style.display = 'inline-block'; // now it's visible
+    let timeout = null;
+
+    // hook a listener on submitTimeout
+    submitTimeout.addEventListener('click', () => {
+        choice = inputTimeout.value;
+        if (/^[0-9]$/.test(choice)) {
+            // valid input
+            choice = String(choice);
+            timeout = (choice * 100);
+            // done with it! hiding #timeout
+            timeoutDiv.style.display = 'none';
+        } else {
+            // invalid input
+            invalidTimeout.style.display = 'inline-block'; // reveal error message!
+        }
+    })
+
+    
+    // null check first
+    if (!timeout) {
+        invalidTimeout.style.display = 'inline-block'; // reveal error message!
+    }
+    
+    if (firstCall) {
+        // maincontent is not up yet...
+        const everything = document.getElementById('everything');
+        everything.style.display = 'inline-block';
+        // now it's up
+    }
+
+    // hide div
+    timeoutDiv.style.display = 'none';
+
+    // teleport
     document.getElementById('teleportation').innerHTML = `P.S. You have <strong>${timeout}ms</strong> before the alert fires.`
 
     const highscore_p = document.querySelector("#highScore");
     const bestScore = getBestScoreForTimeout(window.userHistory, timeout);
     highscore_p.innerHTML = `<strong>Best Score:</strong><br>${bestScore}`;
 
+}
+
+async function getRank(currentRatio) {
+  try {
+    const { data, error } = await supabase
+      .from('leaderboard')
+      .select('scores');
+
+    if (error || !data) {
+      console.error("❌ Error fetching leaderboard data:", error);
+      return "Unknown";
+    }
+
+    // Flatten all scores from all users
+    const allRatios = data
+      .flatMap(entry => entry.scores || [])
+      .map(scoreStr => {
+        const parts = scoreStr.split('|');
+        const ratio = parseFloat(parts[3]);
+        return isNaN(ratio) ? null : ratio;
+      })
+      .filter(r => r !== null);
+
+    // Sort ascending (lower ratio = better)
+    allRatios.sort((a, b) => a - b);
+
+    // Find rank (1-based index)
+    const rank = allRatios.findIndex(r => currentRatio <= r) + 1;
+    return rank > 0 ? rank : allRatios.length + 1;
+
+  } catch (err) {
+    console.error("❌ getRank() error:", err);
+    return "Unknown";
+  }
 }
 
 function reset() {
@@ -847,8 +912,16 @@ function renderLeaderboardParagraph(entries, topbar, content, page = 0) {
 async function init() {
     if (alreadyInited) return;
     
+    // Starting Game...
+    const startingH1 = document.getElementById('startingGame');
+    startingH1.style.display = 'inline-block';
+    setTimeout(() => {
+        // after 3 sec...
+        startingH1.style.display = 'none';
+        ask_timeout(true);
+    }, 3000)
+
     // Start with critical UI elements
-    ask_timeout();
     
     // Initialize game button events immediately
     const gameButton = document.querySelector('.round-btn');
@@ -879,20 +952,13 @@ async function init() {
         const darkModeCheckbox = document.querySelector('#dark-mode');
         const timeoutButton = document.querySelector('#ask-new-timeout');
         const leaderboardButton = document.getElementById('leaderboard');
-        const utilityDiv = document.getElementById('utility');
         
         if (darkModeCheckbox) darkModeCheckbox.addEventListener('change', dark_mode);
         if (timeoutButton) timeoutButton.addEventListener('click', ask_timeout);
         if (leaderboardButton) leaderboardButton.addEventListener('click', showLeaderboard);
         
-        // Add history button
-        if (utilityDiv) {
-            const historyButton = document.createElement('button');
-            historyButton.id = 'history-button';
-            historyButton.textContent = '📜 History';
-            historyButton.addEventListener('click', showHistory);
-            utilityDiv.appendChild(historyButton);
-        }
+        const historyButton = document.getElementById('history');
+        historyButton.addEventListener('click', showHistory);
         
         // hook up login-google
         document.getElementById('login-google').addEventListener('click', () => {

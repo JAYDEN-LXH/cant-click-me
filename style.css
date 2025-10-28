@@ -1,6 +1,6 @@
 /* Base styles */
 body {
-  background-color: black;
+  background-color: #222;
   color: white;
   font-family: "Consolas", monospace;
   transition: background-color 0.3s ease, color 0.3s ease;
@@ -8,6 +8,73 @@ body {
   padding: 0;
   min-height: 100vh;
   position: relative;
+}
+
+#startingGame {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+}
+
+/* #confirm styling */
+#timeout {
+  border: 2px solid white;
+  position: fixed;
+  background-color: #222;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  height: 40vw;
+  width: 40vw; /* equally widthed and heighted */
+  border-radius: 5%;
+  text-align: center;
+}
+
+#timeout #header {
+  font-size: 1.1em;
+}
+
+#timeout #closeTimeout {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  border-radius: 50%;
+  background-color: #888;
+  transform: scale(1.3);
+  border: 1px solid white;
+}
+
+#timeout #closeTimeout:hover {
+  transform: scale(1.7);
+  background-color: #e00;
+  transition: transform 0.2s ease-in-out;
+}
+
+#timeout #invalidTimeout {
+  display: none;
+  color: #ff2000;
+}
+
+#timeout #timeoutChoice {
+  margin-top: 50px;
+  transform: scale(1.5);
+}
+
+#timeout #submitTimeout {
+  transform-origin: center;
+  position: absolute;
+  bottom: 100px;
+  left: 50%;
+  transform: translateX(-50%) scale(2);
+  margin-top: 50px;
+  border-radius: 10%;
+  background-color: #2a7;
+}
+
+#timeout #submitTimeout:hover {
+  background-color: #3b6;
+  transition: background-color 0.2s ease-in;
 }
 
 /* Main content wrapper */
@@ -47,70 +114,100 @@ hr {
   background-color: #2e5;
 }
 
-/* Account Div Styling */
-#account-div {
+/* Main Div Styling */
+#main-div {
   position: fixed;
   top: 50%;
   right: 20px;
   transform: translateY(-50%);
-  height: 90vh;
   width: 200px;
+  min-height: 700px;
   background-color: #222;
   border: 1px solid #888;
   border-radius: 12px;
   padding: 20px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  justify-content: space-between; /* pushes top and bottom zones apart */
+  align-items: center;
+  gap: 12px;
   z-index: 100;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
   font-family: "Segoe UI", Arial, sans-serif;
   color: #eee;
 }
 
-#account-div p {
-    margin: 8px 0;
-    padding: 8px;
-    border-radius: 4px;
-    background: rgba(255, 255, 255, 0.05);
-    flex: 1;
-    /* Add overflow handling */
-    word-wrap: break-word;
-    overflow-wrap: break-word;
-    max-width: 100%;
+.center-hr-wrapper {
+  position: relative;
+  width: 100%;
+  height: 100px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }
 
-#account-div #highScore,
-#account-div #userEmail,
-#account-div #userName {
-    display: block;
-    margin-bottom: 10px;
-    line-height: 1.5;
-    /* Add text overflow handling */
-    white-space: normal;
-    overflow: hidden;
-    text-overflow: ellipsis;
+.centered-hr {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 100%;
+  border-color: #aaa;
+  margin: 0;
 }
 
-/* Add tooltip on hover for long text */
-#account-div #userEmail:hover,
-#account-div #userName:hover {
+.top-zone {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    gap: 12px;
+}
+
+.bottom-zone,
+.center-hr-wrapper {
+  width: 100%;
+}
+
+.bottom-zone > *,
+.top-zone > * {
+  width: 100%; /* ensures buttons, paragraphs, etc. match container width */
+}
+
+#history {
+    min-height: 50px;
+}
+#history:hover {
+    transform: scale(1.05);
+    transition: transform 0.2s ease-in-out;
+}
+
+.mode-toggle {
+    display: flex;
     position: relative;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 20px;
+    padding: 8px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 4px;
+    border: 1px solid #ccc;
+    right: 5px;
 }
 
-#account-div #userEmail:hover::after,
-#account-div #userName:hover::after {
-    content: attr(title);
-    position: absolute;
-    left: -220px;
-    top: 0;
-    background: #333;
-    padding: 5px 10px;
+#main-div #ask-new-timeout {
+    width: 100%;
+    padding: 8px;
+    background: #3a6;
+    color: white;
+    border: none;
     border-radius: 4px;
-    font-size: 0.9em;
-    white-space: nowrap;
-    z-index: 1000;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+#main-div #ask-new-timeout:hover {
+    background: #2e5;
+    transform: scale(1.05);
 }
 
 #avatar-div {
@@ -118,56 +215,24 @@ hr {
   text-align: center;
 }
 
-/* Utility Div Styling */
-#utility {
-  position: absolute;
-  transform:scale(1.05) translateX(-50%);
-  top: 92%;
-  left: 50%;
-  background: #222;
-  border: 1px solid #888;
-  border-radius: 6px;
-  padding: 4px 24px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  z-index: 10;
-  min-width: 100px;
-  font-size: 1.1rem;
-  text-align: center;
-}
-#userName, #userEmail, #highScore {
-  display: inline;
+/* Dark mode controls */
+.mode-toggle label {
+    font-size: 1rem;
+    cursor: pointer;
+    user-select: none;
 }
 
-/* Label styling */
-#utility label {
-  font-size: 1.1rem;
-  margin-right: 8px;
-  cursor: pointer;
-  line-height: 1.2;
-}
-
-/* Checkbox styling */
-#utility input[type="checkbox"] {
-  width: 1.2em;
-  height: 1.2em;
-  accent-color: #3a6;
-  vertical-align: middle;
-  cursor: pointer;
-  margin: 0;
-}
-
-
-/* ask-new-timeout settings */
-#utility #ask-new-timeout {
-    border-radius: 5px;
-    height: 2em;
-}
-
-#utility #ask-new-timeout:hover {
-    transform: scale(1.03); /* grow BIGGER */
+.mode-toggle:hover {
+    transform: scale(1.05);
     transition: transform 0.2s ease-in-out;
+}
+
+.mode-toggle input[type="checkbox"] {
+    width: 1.2em;
+    height: 1.2em;
+    accent-color: #3a6;
+    cursor: pointer;
+    margin: 0;
 }
 
 /* Login button */
@@ -236,7 +301,7 @@ hr {
 
 /* Responsive adjustments */
 @media (max-width: 768px) {
-  #account-div {
+  #main-div {
     width: 200px;
   }
   
@@ -246,14 +311,15 @@ hr {
 }
 
 @media (max-width: 480px) {
-  #account-div {
+  #main-div {
     position: static;
     width: 100%;
-    height: auto;
     transform: none;
     border-radius: 0;
     border-left: none;
+    border-right: none;
     border-bottom: 1px solid #888;
+    margin-bottom: 20px;
   }
   
   body {
@@ -269,7 +335,7 @@ hr {
 }
 
 #leaderboard:hover {
-  transform: scale(1.06);
+  transform: scale(1.05);
   transition: transform 0.2s ease-in-out;
 }
 
