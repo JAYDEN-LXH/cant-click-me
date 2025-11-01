@@ -52,19 +52,19 @@ body {
 }
 
 #timeout #invalidTimeout {
-  display: none;
   color: #ff2000;
+  margin-top:20px;
 }
 
 #timeout #timeoutChoice {
-  margin-top: 50px;
+  margin-top: 40px;
   transform: scale(1.5);
 }
 
 #timeout #submitTimeout {
   transform-origin: center;
   position: absolute;
-  bottom: 100px;
+  bottom: 50px;
   left: 50%;
   transform: translateX(-50%) scale(2);
   margin-top: 50px;
@@ -78,7 +78,10 @@ body {
 }
 
 /* Main content wrapper */
-.main-content {
+#main-content {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
   max-width: 600px;
   margin: 0 auto;
   padding: 1rem;
@@ -116,7 +119,7 @@ hr {
 
 /* Main Div Styling */
 #main-div {
-  position: fixed;
+  position: absolute;
   top: 50%;
   right: 20px;
   transform: translateY(-50%);

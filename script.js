@@ -1,5 +1,4 @@
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
-
 // === CONSTANTS & CONFIGURATIONS ===
 const SUPABASE_URL = 'https://gkfrlvfaersfknteuqwf.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdrZnJsdmZhZXJzZmtudGV1cXdmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc4ODE5ODIsImV4cCI6MjA3MzQ1Nzk4Mn0.qnqj1sIT2hAcH2MOQawcbmKxq1iY_kaRZrSM_mLpgKc';
@@ -25,6 +24,7 @@ let timeout = null;
 let timerInterval = null;
 let start = null;
 let lastElapsed = null;
+let timeoutDecided = false;
 
 // === MESSAGE ARRAYS ===
 const onHoverList = [
@@ -271,6 +271,8 @@ function clearTimerOnMouseLeave() {
 }
 
 async function after_click() {
+    if (!timeoutDecided) return;
+
     // 🎯 Update header with random message
     const header = document.getElementById("header");
     if (onClickList.length > 0 && header) {
@@ -287,7 +289,7 @@ async function after_click() {
     stopTimer();
 
     // 🧱 Get main content container
-    const mainContent = document.querySelector('.main-content');
+    const mainContent = document.querySelector('#main-content');
     if (!mainContent) {
         console.error("Main content container not found.");
         return;
@@ -305,7 +307,6 @@ async function after_click() {
             msg.innerHTML += dramaticMsg;
         } else {
             const username = session?.user?.user_metadata?.name;
-            if (!username) console.error('AFTER_CLICK() USERNAME ERROR: SESSION?.USER?.USER_METADATA?.NAME');
 
             let ranchoice = Math.random();
             if (ranchoice < 0.5) {
@@ -357,7 +358,6 @@ async function after_click() {
             if (!username) {
                 username = await generateUniqueAnonymousName();
             }
-            const avatar = user?.user_metadata?.picture || null;
 
             const currentRatio = lastElapsed / timeout;
             const rank = getRank(currentRatio);
@@ -368,8 +368,13 @@ async function after_click() {
                 .select('scores')
                 .eq('id', userId)
                 .single();
+            const { data: clickerData, error: clickerError } = await supabase
+                .from('clickers')
+                .select('history')
+                .eq('id', userId)
+                .single();
 
-            if (userError || !userData) {
+            if (userError || !userData || clickerError || !clickerData) {
                 console.warn("⚠️ Could not fetch user data for score logging.");
                 return;
             }
@@ -387,6 +392,18 @@ async function after_click() {
             } else {
                 window.userScores = updatedScores;
                 console.log("📜 Relic score logged:", relic);
+            }
+
+            const updatedHistory = []
+            const {error: historyError} = await supabase
+                .from('clickers')
+                .update({ history: updatedHistory })
+                .eq('id', userId);
+
+            if (historyError) {
+                console.error('History update erorr:', historyError);
+            } else {
+                console.log('Success! after_click() history update');
             }
 
         } catch (error) {
@@ -468,52 +485,41 @@ function dark_mode() {
     }
 }
 
-function ask_timeout(firstCall=false) {
-    const timeoutDiv = document.getElementById('timeout');
-    const submitTimeout = document.getElementById('submitTimeout');
-    const inputTimeout = document.getElementById('timeoutChoice');
-    const invalidTimeout = document.getElementById('invalidTimeout');
-    timeoutDiv.style.display = 'inline-block'; // now it's visible
-    let timeout = null;
+function ask_timeout(firstCall = false) {
+  const timeoutDiv = document.getElementById('timeout');
+  const submitTimeout = document.getElementById('submitTimeout');
+  const inputTimeout = document.getElementById('timeoutChoice');
+  const invalidTimeout = document.getElementById('invalidTimeout');
 
-    // hook a listener on submitTimeout
-    submitTimeout.addEventListener('click', () => {
-        choice = inputTimeout.value;
-        if (/^[0-9]$/.test(choice)) {
-            // valid input
-            choice = String(choice);
-            timeout = (choice * 100);
-            // done with it! hiding #timeout
-            timeoutDiv.style.display = 'none';
-        } else {
-            // invalid input
-            invalidTimeout.style.display = 'inline-block'; // reveal error message!
-        }
-    })
+  timeoutDiv.style.display = 'inline-block';
+  invalidTimeout.style.display = 'none';
 
-    
-    // null check first
-    if (!timeout) {
-        invalidTimeout.style.display = 'inline-block'; // reveal error message!
+  if (firstCall) {
+    document.getElementById('main-div').style.display = 'inline-block';
+    document.getElementById('main-content').style.display = 'inline-block';
+  }
+
+  submitTimeout.addEventListener('click', () => {
+    const choice = inputTimeout.value;
+    if (/^[0-9]$/.test(choice)) {
+      timeout = parseInt(choice) * 100;
+      timeoutDiv.style.display = 'none';
+      invalidTimeout.style.display = 'none';
+
+      // Proceed with teleportation and score setup
+      const teleport = document.getElementById('teleportation');
+      teleport.innerHTML = `P.S. You have <strong>${timeout}ms</strong> before the alert fires.`;
+
+      const highscore_p = document.querySelector("#highScore");
+      const bestScore = getBestScoreForTimeout(window.userHistory, timeout);
+      highscore_p.innerHTML = `<strong>Best Score:</strong><br>${bestScore}`;
+
+      timeoutDecided = true;
+    } else {
+      invalidTimeout.style.display = 'block';
+      console.log('❌ Invalid input');
     }
-    
-    if (firstCall) {
-        // maincontent is not up yet...
-        const everything = document.getElementById('everything');
-        everything.style.display = 'inline-block';
-        // now it's up
-    }
-
-    // hide div
-    timeoutDiv.style.display = 'none';
-
-    // teleport
-    document.getElementById('teleportation').innerHTML = `P.S. You have <strong>${timeout}ms</strong> before the alert fires.`
-
-    const highscore_p = document.querySelector("#highScore");
-    const bestScore = getBestScoreForTimeout(window.userHistory, timeout);
-    highscore_p.innerHTML = `<strong>Best Score:</strong><br>${bestScore}`;
-
+  });
 }
 
 async function getRank(currentRatio) {
@@ -909,9 +915,7 @@ function renderLeaderboardParagraph(entries, topbar, content, page = 0) {
 }
 
 // === INITIALIZATION ===
-async function init() {
-    if (alreadyInited) return;
-    
+function startingGame() {
     // Starting Game...
     const startingH1 = document.getElementById('startingGame');
     startingH1.style.display = 'inline-block';
@@ -920,9 +924,11 @@ async function init() {
         startingH1.style.display = 'none';
         ask_timeout(true);
     }, 3000)
+}
 
-    // Start with critical UI elements
-    
+async function init() {
+    if (alreadyInited) return;
+
     // Initialize game button events immediately
     const gameButton = document.querySelector('.round-btn');
     if (gameButton) {
@@ -981,5 +987,6 @@ async function init() {
 
 // === EVENT LISTENERS ===
 document.addEventListener('DOMContentLoaded', () => {
-    init();
+    startingGame();
+    setTimeout(init, 3000)
 });
