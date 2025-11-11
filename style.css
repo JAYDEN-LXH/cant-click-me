@@ -1,6 +1,7 @@
 /* Base styles */
 body {
   background-color: #222;
+  pointer-events: auto;
   color: white;
   font-family: "Consolas", monospace;
   transition: background-color 0.3s ease, color 0.3s ease;
@@ -97,8 +98,28 @@ hr {
   transform:translateX(-50%);
 }
 
-/* dontclick button styling */
+/* dontclick button stylings */
+#playground {
+  overflow: hidden;
+  border:1px solid white;
+  border-radius: 2%;
+  position: relative;
+  left:50%;
+  transform:translateX(-50%);
+  display:block;
+  width: 700px;
+  height: 600px;
+  text-align: center;
+  background-color: black;
+}
+
 .round-btn {
+  position: absolute;
+  max-width: 100%;
+  max-height: 100%;
+  box-sizing: border-box;
+  position: absolute;
+  display: inline-block;
   user-select:none;
   border-radius: 5px;
   height: 30px;

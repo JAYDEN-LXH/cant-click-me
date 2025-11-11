@@ -3,7 +3,7 @@
     <head>
         <title>Can't Click Me!</title>
         <meta charset="UTF-8">
-        <link rel="icon" href="favicon-ranges/favicon.ico" type="image/x-icon">
+        <link rel="icon" href="favicon-ranges/favicon.png">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         
         <!-- Preload critical fonts -->
@@ -41,7 +41,10 @@
             <p id="teleportation"></p>
             <p id="timer"><br></p>
             <hr>
-            <button class="round-btn">Try Click Me</button>
+            <div id="playground">
+                <button class="round-btn" style="left: auto; right:auto;">Try Click Me</button>
+            </div>
+            <p id="aw-man"></p>
         </div>
 
         <div id="timeout" style="display: none;">
@@ -61,12 +64,6 @@
             <input placeholder="Enter choice here" id="timeoutChoice"> <!-- Timeout input -->
             <p id="invalidTimeout" style="display:none;">Invalid. Try again!</p>
             <button type="button" id="submitTimeout">OK</button>
-        </div>
-
-        <div id="blocker" style="display:none;">
-            <!-- block()'s spot -->
-            <p id="alertMsg"></p> <!-- JS inserts randitem from alertMsgs here -->
-            <button type="button" id="closeBlock">Aw man</button> <!-- Close button -->
         </div>
         
         <div id="main-div" style="display:none;">

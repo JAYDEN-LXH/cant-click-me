@@ -234,6 +234,8 @@ function block() {
 
     start = performance.now(); // <-- Store start time
     const display = document.getElementById("timer");
+    const cantclickBtn = document.getElementsByClassName('round-btn')[0]; // the star!
+    const playground = document.getElementById('playground');
 
     stopTimer();
 
@@ -247,7 +249,25 @@ function block() {
         const alertMsg = alertMsgs[Math.floor(Math.random() * alertMsgs.length)];
         if (elapsed >= timeout) {
             stopTimer();
-            if (!btn_clicked) alert(alertMsg);
+            if (!btn_clicked) {
+                // uh oh!
+                let x = cantclickBtn.offsetLeft;
+                let y = cantclickBtn.offsetTop;
+
+                let playWidth = 700;
+                let playHeight = 600;
+                console.log(x, y); // for safety
+
+                // now let the button fly away
+                let newX = randint(0, playWidth);
+                let newY = randint(0, playHeight);
+
+                cantclickBtn.style.left = newX;
+                cantclickBtn.style.top = newY;
+
+                console.log(newX, newY);
+                // moved!
+            }
         }
     }, 10);
 }
@@ -418,6 +438,10 @@ async function after_click() {
 }
 
 // === UTILITY FUNCTIONS ===
+function randint(min, max) {
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
 async function generateUniqueAnonymousName() {
   let name;
   let attempts = 0;
